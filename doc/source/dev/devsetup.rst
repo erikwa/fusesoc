@@ -18,6 +18,27 @@ To improve FuseSoC itself, or to test the latest unreleased version, it is neces
    git clone https://github.com/olofk/fusesoc
 
 
+Develop in a container
+----------------------
+
+The source repository contains a `Dev Container <https://containers.dev/>`_ configuration in the ``.devcontainer`` directory.
+It provides a ready-to-use development environment, with the Python development dependencies, the pre-commit tooling, and the simulators used by some tests (Icarus Verilog and Verilator) already installed.
+
+Using the container is optional.
+It is an alternative to the manual setup described in the next section, which remains fully supported.
+
+To use it, install `Docker <https://www.docker.com/>`_ and the `Dev Containers extension <https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers>`_ for Visual Studio Code.
+Then open the cloned source directory in Visual Studio Code and confirm the "Reopen in Container" prompt, or run "Dev Containers: Reopen in Container" from the command palette.
+The first start builds the container image and therefore takes longer than later starts, which reuse it.
+
+The container performs all steps of the manual setup automatically, including the installation of FuseSoC in editable mode.
+There is no need to repeat them inside the container.
+
+.. note::
+
+   Editors other than Visual Studio Code can use the configuration through the `Dev Containers CLI <https://github.com/devcontainers/cli>`_.
+   The CLI does not forward the SSH agent into the container, so git operations over SSH are not available there without additional configuration.
+
 Setup development environment
 -----------------------------
 
