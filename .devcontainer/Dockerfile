@@ -37,8 +37,11 @@ RUN set -eu; \
 # Trust GitHub's SSH host keys system-wide so that git operations over SSH
 # (e.g. pushing to a fork) don't stop at an interactive "authenticity of host"
 # prompt on first use. The keys themselves are never copied into the image:
-# VS Code forwards the host's ssh-agent into the container (see
-# devcontainer.json), so private keys stay on the host.
+# VS Code's Dev Containers extension automatically forwards the host's
+# ssh-agent into the container, so private keys stay on the host. Note that
+# this forwarding is done by VS Code, not configured here or in
+# devcontainer.json, and does not apply to plain "docker exec" or to the
+# devcontainer CLI, where SSH_AUTH_SOCK is left unset.
 RUN mkdir -p /etc/ssh \
     && ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> /etc/ssh/ssh_known_hosts
 
