@@ -465,38 +465,54 @@ class CoreManager:
 
             for f in files:
                 if f.endswith(".core"):
-                    core_file = os.path.join(root, f)
-                    try:
-                        capi_version = self._detect_capi_version(core_file)
-                        if capi_version == 1:
-                            # Skip core files which are not in CAPI2 format.
-                            logger.error(
-                                "Core file {} is in CAPI1 format, which is not supported "
-                                "any more since FuseSoC 2.0. The core file is ignored. "
-                                "Please migrate your cores to the CAPI2 file format, or "
-                                "use FuseSoC 1.x as stop-gap.".format(core_file)
-                            )
-                            continue
-                        elif capi_version == -1:
-                            # Skip core files which are not FuseSoc format at all.
-                            continue
-
-                        core = Core(
-                            parser=self.core2parser,
-                            core_file=core_file,
-                            cache_root=self.config.cache_root,
-                        )
+                    core = self.read_core_file(os.path.join(root, f))
+                    if core is not None:
                         found_cores.append(core)
-                    except SyntaxError as e:
-                        w = "Parse error. Ignoring file " + core_file + ": " + e.msg
-                        logger.warning(w)
-                        self.parse_errors.append((core_file, e.msg))
-                    except ImportError as e:
-                        w = 'Failed to register "{}" due to unknown provider: {}'
-                        logger.warning(w.format(core_file, str(e)))
-                    except ValueError as e:
-                        logger.warning(e)
         return found_cores
+
+    def read_core_file(self, core_file):
+        """Read one .core file, returning None if it can not be used.
+
+        Every rejected file is logged and recorded on ``parse_errors``, so
+        ``fusesoc core validate`` and the "core not found" message see them.
+        """
+        try:
+            capi_version = self._detect_capi_version(core_file)
+            if capi_version == 1:
+                # Skip core files which are not in CAPI2 format.
+                msg = (
+                    "Core file {} is in CAPI1 format, which is not supported "
+                    "any more since FuseSoC 2.0. The core file is ignored. "
+                    "Please migrate your cores to the CAPI2 file format, or "
+                    "use FuseSoC 1.x as stop-gap.".format(core_file)
+                )
+                logger.error(msg)
+                self.parse_errors.append((core_file, "CAPI1 is not supported"))
+                return None
+            elif capi_version == -1:
+                # Skip core files which are not FuseSoc format at all.
+                self.parse_errors.append(
+                    (core_file, "Unable to determine CAPI version")
+                )
+                return None
+
+            return Core(
+                parser=self.core2parser,
+                core_file=core_file,
+                cache_root=self.config.cache_root,
+            )
+        except SyntaxError as e:
+            w = "Parse error. Ignoring file " + core_file + ": " + e.msg
+            logger.warning(w)
+            self.parse_errors.append((core_file, e.msg))
+        except ImportError as e:
+            w = 'Failed to register "{}" due to unknown provider: {}'
+            logger.warning(w.format(core_file, str(e)))
+            self.parse_errors.append((core_file, f"Unknown provider: {e}"))
+        except ValueError as e:
+            logger.warning(e)
+            self.parse_errors.append((core_file, str(e)))
+        return None
 
     def _detect_capi_version(self, core_file) -> int:
         """Detect the CAPI version in a .core file

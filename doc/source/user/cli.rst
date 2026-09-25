@@ -54,3 +54,53 @@ Exporting source files
 ----------------------
 
 The standard behavior for FuseSoC is to copy all used source files into a subdirectory of the work root. This has three advantages. The work root is self-contained with all the source files and can be copied elsewhere for archival purposes or to build on another machine. No stray files are picked up by mistake from the original source directories. It is always possible to know from exactly which files a build was created. Despite this, there are situations where it is preferable to reference the source files from their original location. This can be done by adding the `--no-export` flag.
+
+.. _ug_cli_core_validate:
+
+Checking core files
+===================
+
+The ``fusesoc core validate`` command checks core files for errors without building anything.
+It is intended for continuous integration and pre-commit checks of core libraries.
+
+::
+
+    usage: fusesoc core validate [-h] [paths ...]
+
+    positional arguments:
+      paths       Core files or directories to check (default: all registered
+                  libraries)
+
+Each path can be a core file or a directory, which is searched for core files the same way as a library.
+Without any paths, all registered libraries are checked.
+
+Every core file with an error is reported on its own line as ``<core file>: <error>``.
+The command exits with a non-zero exit code if any error was found.
+
+The command only reads the core files, which catches errors such as YAML syntax errors, keys or values not allowed by the CAPI schema, a missing or wrong ``CAPI=2:`` first line, and malformed expressions.
+Errors that depend on a build, such as dependencies that cannot be resolved, are only found by ``fusesoc run``.
+
+Continuous integration
+----------------------
+
+To check all core files in a repository, run the command from the repository root::
+
+    pip install fusesoc
+    fusesoc core validate .
+
+pre-commit
+----------
+
+FuseSoC provides a `pre-commit <https://pre-commit.com/>`_ hook which checks all changed core files on every commit.
+Add it to the ``.pre-commit-config.yaml`` of your repository:
+
+.. code-block:: yaml
+
+    repos:
+      - repo: https://github.com/olofk/fusesoc
+        rev: <FuseSoC version>
+        hooks:
+          - id: fusesoc-core-validate
+
+pre-commit installs FuseSoC by itself, so it does not need to be installed beforehand.
+Files that end in ``.core`` but are not FuseSoC core files can be skipped with the standard pre-commit ``exclude`` option.

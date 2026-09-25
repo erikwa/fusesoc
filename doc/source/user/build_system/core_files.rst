@@ -9,6 +9,8 @@ Core files are written in :term:`YAML` syntax and follow the FuseSoC's own CAPI 
 Don't worry: using FuseSoC neither requires a full understanding of YAML, nor an up-front knowledge of CAPI.
 However, some key facts about YAML are important.
 
+Once written, a core file can be checked for errors with ``fusesoc core validate``, see :ref:`ug_cli_core_validate`.
+
 .. _ug_build_system_core_files_yaml_intro:
 
 Things one should know about YAML

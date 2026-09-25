@@ -133,6 +133,33 @@ targets:
     assert captured.out == "Running generator\n"
 
 
+def test_core_validate(capsys, caplog):
+    """`fusesoc core validate` reports every broken core file and exits with 1,
+    and exits cleanly when all core files are good. The warnings logged while
+    reading the core files are not shown, since they repeat the report."""
+    os.mkdir("lib")
+    with open("lib/good.core", "w") as f:
+        f.write("CAPI=2:\nname: ::good:0\ntargets:\n  default: {}\n")
+
+    _fusesoc("core", "validate", "lib")
+    assert capsys.readouterr().out == ""
+
+    with open("lib/broken.core", "w") as f:
+        f.write("CAPI=2:\nname: ::broken:0\nfilesets:\n  fs:\n    files: nope\n")
+    with open("lib/capi1.core", "w") as f:
+        f.write("CAPI=1\n")
+
+    with pytest.raises(SystemExit) as e:
+        _fusesoc("core", "validate", "lib", "lib/good.core", "missing.core")
+    assert e.value.code == 1
+    out = capsys.readouterr().out
+    assert "broken.core: " in out
+    assert "capi1.core: CAPI1 is not supported" in out
+    assert "missing.core: No such file or directory" in out
+    assert "good.core" not in out
+    assert not [r for r in caplog.records if r.name == "fusesoc.coremanager"]
+
+
 # region Test fixtures and helper functions
 @pytest.fixture(autouse=True)  # this fixture will be used by all tests implicitly
 def run_in_temporary_directory(request):

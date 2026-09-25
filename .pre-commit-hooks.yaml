@@ -1,0 +1,8 @@
+# Hooks this repository provides to other projects using pre-commit
+# (https://pre-commit.com/). See "Checking core files" in the user guide.
+- id: fusesoc-core-validate
+  name: Validate FuseSoC core files
+  description: Check .core files for errors with `fusesoc core validate`
+  entry: fusesoc core validate
+  language: python
+  files: \.core$

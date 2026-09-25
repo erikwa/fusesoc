@@ -25,7 +25,7 @@ except ImportError:
 import logging
 
 from fusesoc.config import Config
-from fusesoc.coremanager import DependencyError
+from fusesoc.coremanager import CoreManager, DependencyError
 from fusesoc.fusesoc import Fusesoc
 from fusesoc.librarymanager import Library
 
@@ -321,6 +321,41 @@ def core_sign(fs, args):
     print(f"{sigfile} created")
 
 
+def core_validate(config, args):
+    """Takes a Config rather than a Fusesoc, since creating a Fusesoc scans every
+    registered library, which drowns the errors for the paths asked for."""
+    # Every rejected file gets its own line below, so the warnings logged while
+    # reading the core files would only repeat those lines
+    cm_logger = logging.getLogger("fusesoc.coremanager")
+    cm_level = cm_logger.level
+    cm_logger.setLevel(logging.CRITICAL)
+    try:
+        if args.paths:
+            cm = CoreManager(config)
+            for path in args.paths:
+                if os.path.isfile(path):
+                    cm.read_core_file(path)
+                elif os.path.isdir(path):
+                    cm.find_cores(Library(path, path), config.ignored_dirs)
+                else:
+                    cm.parse_errors.append((path, "No such file or directory"))
+            errors = cm.parse_errors
+        else:
+            fs = Fusesoc(config)
+            if not fs.get_libraries():
+                logger.error("No libraries registered and no paths given")
+                exit(1)
+            errors = fs.parse_errors
+    finally:
+        cm_logger.setLevel(cm_level)
+
+    for core_file, err in errors:
+        print(f"{core_file}: {err.strip()}")
+    if errors:
+        exit(1)
+    logger.info("No errors found")
+
+
 def gen_clean(fs, args):
     cachedir = os.path.join(fs.config.cache_root, "generator_cache")
     shutil.rmtree(cachedir, ignore_errors=True)
@@ -563,6 +598,18 @@ def get_parser():
     )
     core_show_arg.completer = CoreCompleter()  # type: ignore[attr-defined, ty:unresolved-attribute]
     parser_core_show.set_defaults(func=core_info)
+
+    # core validate subparser
+    parser_core_validate = core_subparsers.add_parser(
+        "validate",
+        help="Check core files for errors. Exits with 1 if any core file is broken",
+    )
+    parser_core_validate.add_argument(
+        "paths",
+        nargs="*",
+        help="Core files or directories to check (default: all registered libraries)",
+    )
+    parser_core_validate.set_defaults(func=core_validate)
 
     parser_core_sign = core_subparsers.add_parser(
         "sign", help="Create user signature for a core"
@@ -835,6 +882,11 @@ def fusesoc(args):
 
     config = Config(_effective_config_path(args.config), create_if_missing=False)
     args_to_config(args, config)
+
+    if args.func is core_validate:
+        core_validate(config, args)
+        return
+
     fs = Fusesoc(config)
 
     # Run the function
